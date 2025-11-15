@@ -368,12 +368,47 @@ void printTree(RBNode* RBNode, int space = 0, int gap = 5) {
     printTree(RBNode->left, space + gap, gap);
 }
 
+void preOrder(RBNode* node){
+    if (node == nullptr) return;
+    cout << node -> data << " ";
+    preOrder(node -> left);
+    preOrder(node -> right);
+}
+void inOrder(RBNode* node){
+    if (node == nullptr) return;
+    inOrder(node -> left);
+    cout << node -> data << " ";
+    inOrder(node -> right);
+}
+void postOrder(RBNode* node){
+    if (node == nullptr) return;
+    postOrder(node -> left);
+    postOrder(node -> right);
+    cout << node -> data << " ";
+}
+void inWidth(RBNode* node, bool itRoot = false){
+    if (node == nullptr) return;
+    if (itRoot) cout << node -> data << " ";
+    if (node -> left != nullptr) cout << node -> left -> data << " ";
+    if (node -> right != nullptr) cout << node -> right -> data << " ";
+    inWidth(node -> left);
+    inWidth(node -> right);
+}
+
 void print(RBTree* tree) {
     if (tree->root == nullptr) {
         cout << "Дерево пустое" << endl;
         return;
     }
-    
     cout << "Структура дерева:" << endl;
     printTree(tree->root);
+    cout << "Обход pre-order" << endl;
+    preOrder(tree -> root);
+    cout << endl << "Обход in-order" << endl;
+    inOrder(tree -> root);
+    cout << endl << "Обход post-order" << endl;
+    postOrder(tree -> root);
+    cout << endl << "Обход в ширину" << endl;
+    inWidth(tree->root, true);
+    cout << endl;
 }

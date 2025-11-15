@@ -9,8 +9,6 @@
 #include "Tree.h"
 
 
-
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -37,40 +35,49 @@ private:
 
 public:
     Database(const string& file) : filename(file) {}
+    ~Database() {
+        // Освобождаем память деревьев
+        for (auto& pair : trees) {
+            deleteTree(pair.second->root);
+            delete pair.second;
+        }
+    }
+    void deleteTree(RBNode* node) {
+        if (node == nullptr) return;
+        deleteTree(node->left);
+        deleteTree(node->right);
+        delete node;
+    }
 
     // ==================== СЕРИАЛИЗАЦИЯ ====================
 
 void saveToFile() {
-    ofstream file(filename, ios::binary);
+    ofstream file(filename);
     if (!file) {
-        cout << "Ошибка, невозможно открыть файл" << filename << endl;
+        cout << "Ошибка, невозможно открыть файл " << filename << endl;
         return;
     }
 
     // Сохраняем массивы
-    size_t arrayCount = arrays.size();
-    file.write(reinterpret_cast<char*>(&arrayCount), sizeof(size_t));
+    file << "ARRAYS " << arrays.size() << endl;
     for (const auto& pair : arrays) {
-        // Сохраняем имя
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "ARRAY " << pair.first << endl;
         
-        // Сохраняем данные массива
-        size_t size = pair.second.end - pair.second.data;
-        file.write(reinterpret_cast<char*>(&size), sizeof(size_t));
+        size_t size = pair.second.size;
+        file << size << endl;
+        
+        // Сохраняем элементы только если массив не пустой
         if (size > 0) {
-            file.write(reinterpret_cast<char*>(pair.second.data), size * sizeof(int));
+            for (size_t i = 0; i < size; i++) {
+                file << pair.second.data[i] << endl;
+            }
         }
     }
 
     // Сохраняем односвязные списки
-    size_t flistCount = flists.size();
-    file.write(reinterpret_cast<char*>(&flistCount), sizeof(size_t));
+    file << "FLISTS " << flists.size() << endl;
     for (const auto& pair : flists) {
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "FLIST " << pair.first << endl;
         
         // Подсчитываем элементы
         int count = 0;
@@ -80,21 +87,18 @@ void saveToFile() {
             current = current->next;
         }
         
-        file.write(reinterpret_cast<char*>(&count), sizeof(int));
+        file << count << endl;
         current = pair.second.head;
         while (current != nullptr) {
-            file.write(reinterpret_cast<char*>(&(current->data)), sizeof(int));
+            file << current->data << endl;
             current = current->next;
         }
     }
 
     // Сохраняем двусвязные списки
-    size_t llistCount = llists.size();
-    file.write(reinterpret_cast<char*>(&llistCount), sizeof(size_t));
+    file << "LLISTS " << llists.size() << endl;
     for (const auto& pair : llists) {
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "LLIST " << pair.first << endl;
         
         // Подсчитываем элементы
         int count = 0;
@@ -104,21 +108,18 @@ void saveToFile() {
             current = current->next;
         }
         
-        file.write(reinterpret_cast<char*>(&count), sizeof(int));
+        file << count << endl;
         current = pair.second.head;
         while (current != nullptr) {
-            file.write(reinterpret_cast<char*>(&(current->data)), sizeof(int));
+            file << current->data << endl;
             current = current->next;
         }
     }
 
     // Сохраняем стеки
-    size_t stackCount = stacks.size();
-    file.write(reinterpret_cast<char*>(&stackCount), sizeof(size_t));
+    file << "STACKS " << stacks.size() << endl;
     for (const auto& pair : stacks) {
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "STACK " << pair.first << endl;
         
         // Подсчитываем элементы
         int count = 0;
@@ -129,8 +130,8 @@ void saveToFile() {
         }
         
         // Сохраняем в обратном порядке для стека
-        file.write(reinterpret_cast<char*>(&count), sizeof(int));
-        vector<int> temp;
+        file << count << endl;
+        vector<string> temp;
         current = pair.second.head;
         while (current != nullptr) {
             temp.push_back(current->data);
@@ -138,17 +139,14 @@ void saveToFile() {
         }
         // Записываем от дна к вершине
         for (auto it = temp.rbegin(); it != temp.rend(); ++it) {
-            file.write(reinterpret_cast<char*>(&(*it)), sizeof(int));
+            file << *it << endl;
         }
     }
 
     // Сохраняем очереди
-    size_t queueCount = queues.size();
-    file.write(reinterpret_cast<char*>(&queueCount), sizeof(size_t));
+    file << "QUEUES " << queues.size() << endl;
     for (const auto& pair : queues) {
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "QUEUE " << pair.first << endl;
         
         // Подсчитываем элементы
         int count = 0;
@@ -158,791 +156,801 @@ void saveToFile() {
             current = current->next;
         }
         
-        file.write(reinterpret_cast<char*>(&count), sizeof(int));
+        file << count << endl;
         current = pair.second.head;
         while (current != nullptr) {
-            file.write(reinterpret_cast<char*>(&(current->data)), sizeof(int));
+            file << current->data << endl;
             current = current->next;
         }
     }
 
-    // Сохраняем деревья
-    size_t treeCount = trees.size();
-    file.write(reinterpret_cast<char*>(&treeCount), sizeof(size_t));
+    // Сохраняем деревья (используем бинарный формат для совместимости)
+    file << "TREES " << trees.size() << endl;
     for (const auto& pair : trees) {
-        size_t nameLength = pair.first.length();
-        file.write(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        file.write(pair.first.c_str(), nameLength);
+        file << "TREE " << pair.first << endl;
         
         // Сохраняем дерево в порядке предварительного обхода
-        saveTreeToFile(file, pair.second->root);
+        vector<string> treeData;
+        saveTreeToString(pair.second->root, treeData);
+        file << treeData.size() << endl;
+        for (const auto& data : treeData) {
+            file << data << endl;
+        }
     }
 
     file.close();
     cout << "База данных сохранена " << filename << endl;
 }
 
-// Вспомогательная функция для сохранения дерева
-void saveTreeToFile(ofstream& file, RBNode* node) {
+// Вспомогательная функция для сохранения дерева в строки
+void saveTreeToString(RBNode* node, vector<string>& result) {
     if (node == nullptr) {
-        int marker = -1; // Маркер пустого узла
-        file.write(reinterpret_cast<char*>(&marker), sizeof(int));
+        result.push_back("NULL");
         return;
     }
     
-    // Сохраняем данные узла и цвет
-    file.write(reinterpret_cast<char*>(&(node->data)), sizeof(int));
-    int color = (node->color == Color::RED) ? 0 : 1;
-    file.write(reinterpret_cast<char*>(&color), sizeof(int));
+    // Сохраняем данные узла (int) и цвет
+    result.push_back(to_string(node->data));
+    result.push_back((node->color == Color::RED) ? "RED" : "BLACK");
     
     // Рекурсивно сохраняем левое и правое поддеревья
-    saveTreeToFile(file, node->left);
-    saveTreeToFile(file, node->right);
+    saveTreeToString(node->left, result);
+    saveTreeToString(node->right, result);
 }
 
 void loadFromFile() {
-    ifstream file(filename, ios::binary);
+    ifstream file(filename);
     if (!file) {
         cout << "Файл " << filename << " ненайден, создан новый файл" << endl;
         return;
     }
 
-    // Загружаем массивы
-    size_t arrayCount;
-    file.read(reinterpret_cast<char*>(&arrayCount), sizeof(size_t));
-    for (size_t i = 0; i < arrayCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        size_t size;
-        file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
-        
-        Array arr = MCREATE();
-        if (size > 0) {
-            delete[] arr.data;
-            arr.data = new int[size];
-            arr.end = arr.data + size;
-            file.read(reinterpret_cast<char*>(arr.data), size * sizeof(int));
-        }
-        arrays[name] = arr;
-    }
-
-    // Загружаем односвязные списки
-    size_t flistCount;
-    file.read(reinterpret_cast<char*>(&flistCount), sizeof(size_t));
-    for (size_t i = 0; i < flistCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        int count;
-        file.read(reinterpret_cast<char*>(&count), sizeof(int));
-        
-        FList flist;
-        if (count > 0) {
-            int data;
-            file.read(reinterpret_cast<char*>(&data), sizeof(int));
-            FCREATE(flist, data);
-            
-            for (int j = 1; j < count; j++) {
-                file.read(reinterpret_cast<char*>(&data), sizeof(int));
-                FADDTAIL(flist, data);
+    string section;
+    int count;
+    
+    while (file >> section) {
+        if (section == "ARRAYS") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int size;
+                file >> size;
+                file.ignore();
+                
+                Array arr;
+                arr.size = size;
+                if (size > 0) {
+                    // Выделяем память для массива
+                    arr.data = new string[size];
+                    for (int j = 0; j < size; j++) {
+                        getline(file, arr.data[j]);
+                    }
+                }
+                arrays[name] = arr;
             }
         }
-        flists[name] = flist;
-    }
-
-    // Загружаем двусвязные списки
-    size_t llistCount;
-    file.read(reinterpret_cast<char*>(&llistCount), sizeof(size_t));
-    for (size_t i = 0; i < llistCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        int count;
-        file.read(reinterpret_cast<char*>(&count), sizeof(int));
-        
-        LList llist;
-        if (count > 0) {
-            int data;
-            file.read(reinterpret_cast<char*>(&data), sizeof(int));
-            LCREATE(llist, data);
-            
-            for (int j = 1; j < count; j++) {
-                file.read(reinterpret_cast<char*>(&data), sizeof(int));
-                LADDTAIL(llist, data);
+        else if (section == "FLISTS") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int elementCount;
+                file >> elementCount;
+                file.ignore(); // Пропускаем перевод строки
+                
+                FList flist;
+                if (elementCount > 0) {
+                    // Создаем временный вектор для хранения данных
+                    vector<string> elements;
+                    for (int j = 0; j < elementCount; j++) {
+                        string data;
+                        getline(file, data);
+                        elements.push_back(data);
+                    }
+                    if (!elements.empty()) {
+                        flist.head = new FLNode(elements[0]);
+                        FLNode* current = flist.head;
+                        
+                        for (size_t j = 1; j < elements.size(); j++) {
+                            current->next = new FLNode(elements[j]);
+                            current = current->next;
+                        }
+                    }
+                }
+                flists[name] = flist;
             }
         }
-        llists[name] = llist;
-    }
-
-    // Загружаем стеки
-    size_t stackCount;
-    file.read(reinterpret_cast<char*>(&stackCount), sizeof(size_t));
-    for (size_t i = 0; i < stackCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        int count;
-        file.read(reinterpret_cast<char*>(&count), sizeof(int));
-        
-        Stack stack;
-        if (count > 0) {
-            vector<int> temp(count);
-            for (int j = 0; j < count; j++) {
-                file.read(reinterpret_cast<char*>(&temp[j]), sizeof(int));
-            }
-            // Восстанавливаем стек (первый элемент в файле - дно стека)
-            SCREATE(stack, temp[0]);
-            for (int j = 1; j < count; j++) {
-                SPUSH(stack, temp[j]);
+        else if (section == "LLISTS") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int elementCount;
+                file >> elementCount;
+                file.ignore(); // Пропускаем перевод строки
+                
+                LList llist;
+                if (elementCount > 0) {
+                    string data;
+                    getline(file, data);
+                    LCREATE(llist, data);
+                    
+                    for (int j = 1; j < elementCount; j++) {
+                        getline(file, data);
+                        LADDTAIL(llist, data);
+                    }
+                }
+                llists[name] = llist;
             }
         }
-        stacks[name] = stack;
-    }
-
-    // Загружаем очереди
-    size_t queueCount;
-    file.read(reinterpret_cast<char*>(&queueCount), sizeof(size_t));
-    for (size_t i = 0; i < queueCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        int count;
-        file.read(reinterpret_cast<char*>(&count), sizeof(int));
-        
-        Queue queue;
-        if (count > 0) {
-            int data;
-            file.read(reinterpret_cast<char*>(&data), sizeof(int));
-            QCREATE(queue, data);
-            
-            for (int j = 1; j < count; j++) {
-                file.read(reinterpret_cast<char*>(&data), sizeof(int));
-                QPUSH(queue, data);
+        else if (section == "STACKS") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int elementCount;
+                file >> elementCount;
+                file.ignore(); // Пропускаем перевод строки
+                
+                Stack stack;
+                if (elementCount > 0) {
+                    vector<string> temp(elementCount);
+                    for (int j = 0; j < elementCount; j++) {
+                        getline(file, temp[j]);
+                    }
+                    // Восстанавливаем стек
+                    SCREATE(stack, temp[0]);
+                    for (int j = 1; j < elementCount; j++) {
+                        SPUSH(stack, temp[j]);
+                    }
+                }
+                stacks[name] = stack;
             }
         }
-        queues[name] = queue;
-    }
-
-    // Загружаем деревья
-    size_t treeCount;
-    file.read(reinterpret_cast<char*>(&treeCount), sizeof(size_t));
-    for (size_t i = 0; i < treeCount; i++) {
-        size_t nameLength;
-        file.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
-        string name(nameLength, ' ');
-        file.read(&name[0], nameLength);
-        
-        RBTree* tree = new RBTree{nullptr};
-        tree->root = loadTreeFromFile(file);
-        trees[name] = tree;
+        else if (section == "QUEUES") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int elementCount;
+                file >> elementCount;
+                file.ignore(); // Пропускаем перевод строки
+                
+                Queue queue;
+                if (elementCount > 0) {
+                    string data;
+                    getline(file, data);
+                    QCREATE(queue, data);
+                    
+                    for (int j = 1; j < elementCount; j++) {
+                        getline(file, data);
+                        QPUSH(queue, data);
+                    }
+                }
+                queues[name] = queue;
+            }
+        }
+        else if (section == "TREES") {
+            file >> count;
+            for (int i = 0; i < count; i++) {
+                string type, name;
+                file >> type >> name;
+                
+                int elementCount;
+                file >> elementCount;
+                file.ignore(); // Пропускаем перевод строки
+                
+                RBTree* tree = new RBTree{nullptr};
+                vector<string> treeData(elementCount);
+                for (int j = 0; j < elementCount; j++) {
+                    getline(file, treeData[j]);
+                }
+                tree->root = loadTreeFromString(treeData, 0).first;
+                trees[name] = tree;
+            }
+        }
     }
 
     file.close();
     cout << "База данных загружена из " << filename << endl;
 }
 
-// Вспомогательная функция для загрузки дерева
-RBNode* loadTreeFromFile(ifstream& file) {
-    int data;
-    file.read(reinterpret_cast<char*>(&data), sizeof(int));
-    
-    if (data == -1) { // Маркер пустого узла
-        return nullptr;
+// Вспомогательная функция для загрузки дерева из строк
+pair<RBNode*, int> loadTreeFromString(const vector<string>& data, int index) {
+    if (index >= data.size() || data[index] == "NULL") {
+        return {nullptr, index + 1};
     }
     
-    int color;
-    file.read(reinterpret_cast<char*>(&color), sizeof(int));
+    int nodeData = stoi(data[index]);  // Конвертируем строку в int
+    string colorStr = data[index + 1];
     
-    RBNode* node = new RBNode{data, (color == 0) ? Color::RED : Color::BLACK, 
+    RBNode* node = new RBNode{nodeData, (colorStr == "RED") ? Color::RED : Color::BLACK, 
                              nullptr, nullptr, nullptr};
     
-    node->left = loadTreeFromFile(file);
+    auto leftResult = loadTreeFromString(data, index + 2);
+    node->left = leftResult.first;
     if (node->left != nullptr) {
         node->left->parent = node;
     }
     
-    node->right = loadTreeFromFile(file);
+    auto rightResult = loadTreeFromString(data, leftResult.second);
+    node->right = rightResult.first;
     if (node->right != nullptr) {
         node->right->parent = node;
     }
     
-    return node;
+    return {node, rightResult.second};
 }
 
     // ==================== ОБРАБОТКА ЗАПРОСОВ ====================
 
 string executeQuery(const string& query) {
-        vector<string> tokens;
-        stringstream ss(query);
-        string token;
-        
-        while (ss >> token) {
-            tokens.push_back(token);
-        }
-        
-        if (tokens.empty()) return "Ошибка, запрос пуст";
-        
-        string command = tokens[0];
-        transform(command.begin(), command.end(), command.begin(), ::toupper);
-        
-        // ==================== МАССИВЫ ====================
-        if (command == "MCREATE" && tokens.size() == 2) {
-            string name = tokens[1];
-            arrays[name] = MCREATE();
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "MSIZE" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (arrays.find(name) == arrays.end()) {
-                return "Массив ненайден";
-            }
-            size_t size = arrays[name].end - arrays[name].data;
-            return to_string(size);
-        }
-        else if (command == "MPUSHEND" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (arrays.find(name) == arrays.end()) {
-                arrays[name] = MCREATE();
-            }
-            MPUSHEND(arrays[name], value);
-            return to_string(value);
-        }
-        else if (command == "MPUSH" && tokens.size() == 4) {
-            string name = tokens[1];
-            int index = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (arrays.find(name) == arrays.end()) {
-                arrays[name] = MCREATE();
-            }
-            MPUSH(arrays[name], value, index);
-            return to_string(value);
-        }
-        else if (command == "MDEL" && tokens.size() == 3) {
-            string name = tokens[1];
-            int index = stoi(tokens[2]);
-            
-            if (arrays.find(name) == arrays.end()) {
-                return "Массив не найден";
-            }
-            MDEL(arrays[name], index);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "MSWAP" && tokens.size() == 4) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            int index = stoi(tokens[3]);
-            
-            if (arrays.find(name) == arrays.end()) {
-                return "Массив не найден";
-            }
-            MSWAP(arrays[name], value, index);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "MGET" && tokens.size() == 3) {
-            string name = tokens[1];
-            int index = stoi(tokens[2]);
-            
-            if (arrays.find(name) == arrays.end()) {
-                return "Массив не найден";
-            }
-            int value = MGET(arrays[name], index);
-            return to_string(value);
-        }
-        else if (command == "MPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (arrays.find(name) == arrays.end()) {
-                return "Массив не найден";
-            }
-            MPRINT(arrays[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        // ==================== ОДНОСВЯЗНЫЕ СПИСКИ ====================
-        else if (command == "FCREATE" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            FCREATE(flists[name], value);
-            return to_string(value);
-        }
-        else if (command == "FGETINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int index = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* node = FGETINDEX(flists[name], index);
-            return to_string(node->data);
-        }
-        else if (command == "FGETDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* node = FGETDATA(flists[name], value);
-            return to_string(node->data);
-        }
-        else if (command == "FADDTAIL" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FADDTAIL(flists[name], value);
-            return to_string(value);
-        }
-        else if (command == "FADDHEAD" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FADDHEAD(flists[name], value);
-            return to_string(value);
-        }
-        // Добавление ПОСЛЕ по ИНДЕКСУ
-        else if (command == "FADDAFTERINDEX" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
-            FADDAFTER(targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ПОСЛЕ по ЗНАЧЕНИЮ
-        else if (command == "FADDAFTERDATA" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETDATA(flists[name], targetValue);
-            FADDAFTER(targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ДО по ИНДЕКСУ
-        else if (command == "FADDBEFOREINDEX" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
-            FADDBEFORE(flists[name], targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ДО по ЗНАЧЕНИЮ
-        else if (command == "FADDBEFOREDATA" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETDATA(flists[name], targetValue);
-            FADDBEFORE(flists[name], targetNode, value);
-            return to_string(value);
-        }
-        else if (command == "FDELTAIL" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FDELTAIL(flists[name]);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "FDELHEAD" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FDELHEAD(flists[name]);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ПОСЛЕ по ИНДЕКСУ
-        else if (command == "FDELAFTERINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
-            FDELAFTER(targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ПОСЛЕ по ЗНАЧЕНИЮ
-        else if (command == "FDELAFTERDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETDATA(flists[name], targetValue);
-            FDELAFTER(targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ДО по ИНДЕКСУ
-        else if (command == "FDELBEFOREINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
-            FDELBEFORE(flists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ДО по ЗНАЧЕНИЮ
-        else if (command == "FDELBEFOREDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FLNode* targetNode = FGETDATA(flists[name], targetValue);
-            FDELBEFORE(flists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "FDELDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FDELDATA(flists[name], value);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "FPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (flists.find(name) == flists.end()) {
-                return "Список не найден";
-            }
-            FPRINT(flists[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        // ==================== ДВУСВЯЗНЫЕ СПИСКИ ====================
-        else if (command == "LCREATE" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            LCREATE(llists[name], value);
-            return to_string(value);
-        }
-        else if (command == "LGETINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int index = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* node = LGETINDEX(llists[name], index);
-            return to_string(node->data);
-        }
-        else if (command == "LGETDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* node = LGETDATA(llists[name], value);
-            return to_string(node->data);
-        }
-        else if (command == "LADDTAIL" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LADDTAIL(llists[name], value);
-            return to_string(value);
-        }
-        else if (command == "LADDHEAD" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LADDHEAD(llists[name], value);
-            return to_string(value);
-        }
-        // Добавление ПОСЛЕ по ИНДЕКСУ
-        else if (command == "LADDAFTERINDEX" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
-            LADDAFTER(llists[name], targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ПОСЛЕ по ЗНАЧЕНИЮ
-        else if (command == "LADDAFTERDATA" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETDATA(llists[name], targetValue);
-            LADDAFTER(llists[name], targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ДО по ИНДЕКСУ
-        else if (command == "LADDBEFOREINDEX" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
-            LADDBEFORE(llists[name], targetNode, value);
-            return to_string(value);
-        }
-        // Добавление ДО по ЗНАЧЕНИЮ
-        else if (command == "LADDBEFOREDATA" && tokens.size() == 4) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            int value = stoi(tokens[3]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETDATA(llists[name], targetValue);
-            LADDBEFORE(llists[name], targetNode, value);
-            return to_string(value);
-        }
-        else if (command == "LDELTAIL" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LDELTAIL(llists[name]);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "LDELHEAD" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LDELHEAD(llists[name]);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ПОСЛЕ по ИНДЕКСУ
-        else if (command == "LDELAFTERINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
-            LDELAFTER(llists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ПОСЛЕ по ЗНАЧЕНИЮ
-        else if (command == "LDELAFTERDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETDATA(llists[name], targetValue);
-            LDELAFTER(llists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ДО по ИНДЕКСУ
-        else if (command == "LDELBEFOREINDEX" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetIndex = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
-            LDELBEFORE(llists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        // Удаление ДО по ЗНАЧЕНИЮ
-        else if (command == "LDELBEFOREDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int targetValue = stoi(tokens[2]);
-            
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LLNode* targetNode = LGETDATA(llists[name], targetValue);
-            LDELBEFORE(llists[name], targetNode);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "LDELDATA" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LDELDATA(llists[name], value);
-            return "Запрос успешно выполнен";
-        }
-        else if (command == "LPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (llists.find(name) == llists.end()) {
-                return "Список не найден";
-            }
-            LPRINT(llists[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        // ==================== ОЧЕРЕДИ ====================
-        else if (command == "QCREATE" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            QCREATE(queues[name], value);
-            return to_string(value);
-        }
-        else if (command == "QPUSH" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (queues.find(name) == queues.end()) {
-                return "Очередь не найдена";
-            }
-            QPUSH(queues[name], value);
-            return to_string(value);
-        }
-        else if (command == "QPOP" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (queues.find(name) == queues.end() || queues[name].head == nullptr) {
-                return "Очередь не существует или пуста";
-            }
-            int value = queues[name].head->data;
-            QPOP(queues[name]);
-            return to_string(value);
-        }
-        else if (command == "QPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (queues.find(name) == queues.end()) {
-                return "Очередь не найдена";
-            }
-            QPRINT(queues[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        // ==================== СТЕКИ ====================
-        // Создание стека (только если не существует)
-        else if (command == "SCREATE" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (stacks.find(name) != stacks.end()) {
-                return "Стэк с таким именем уже существует";
-            }
-            SCREATE(stacks[name], value);
-            return to_string(value);
-        }
-        // Добавление в стек
-        else if (command == "SPUSH" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (stacks.find(name) == stacks.end()) {
-                return "Стэк не найден";
-            }
-            SPUSH(stacks[name], value);
-            return to_string(value);
-        }
-        else if (command == "SPOP" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (stacks.find(name) == stacks.end() || stacks[name].head == nullptr) {
-                return "Стэк пуст или не существует";
-            }
-            int value = stacks[name].head->data;
-            SPOP(stacks[name]);
-            return to_string(value);
-        }
-        else if (command == "SPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (stacks.find(name) == stacks.end()) {
-                return "Стэк не найден";
-            }
-            SPRINT(stacks[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        // ==================== ДЕРЕВЬЯ ====================
-        else if (command == "TADD" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (trees.find(name) == trees.end()) {
-                trees[name] = new RBTree{nullptr};
-            }
-            addRBNode(trees[name], value);
-            return to_string(value);
-        }
-        else if (command == "TDEL" && tokens.size() == 3) {
-            string name = tokens[1];
-            int value = stoi(tokens[2]);
-            
-            if (trees.find(name) == trees.end()) {
-                return "Дерево не найдено";
-            }
-            delRBNode(trees[name], value);
-            return to_string(value);
-        }
-        else if (command == "TPRINT" && tokens.size() == 2) {
-            string name = tokens[1];
-            if (trees.find(name) == trees.end()) {
-                return "Дерево не найдено";
-            }
-            print(trees[name]);
-            return "Запрос успешно выполнен";
-        }
-        
-        else {
-            return "Ошибка, неизвестная комманда или неправильные аргументы";
-        }
+    vector<string> tokens;
+    stringstream ss(query);
+    string token;
+    
+    while (ss >> token) {
+        tokens.push_back(token);
     }
+    
+    if (tokens.empty()) return "Ошибка, запрос пуст";
+    
+    string command = tokens[0];
+    transform(command.begin(), command.end(), command.begin(), ::toupper);
+    
+    // ==================== МАССИВЫ ====================
+    if (command == "MCREATE" && tokens.size() == 2) {
+    string name = tokens[1];
+    arrays[name] = Array();
+    return "Запрос успешно выполнен";
+    }
+    else if (command == "MSIZE" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (arrays.find(name) == arrays.end()) {
+            return "Массив ненайден";
+        }
+        size_t size = arrays[name].size;
+        return to_string(size);
+    }
+    else if (command == "MPUSHEND" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+    
+        if (arrays.find(name) == arrays.end()) {
+            arrays[name] = Array();
+        }
+        MPUSHEND(arrays[name], value);
+        return value;
+    }
+    else if (command == "MPUSH" && tokens.size() == 4) {
+        string name = tokens[1];
+        int index = stoi(tokens[2]);
+        string value = tokens[3];
+        
+        if (arrays.find(name) == arrays.end()) {
+            arrays[name] = Array();
+        }
+        MPUSH(arrays[name], value, index);
+        return value;
+    }
+    else if (command == "MDEL" && tokens.size() == 3) {
+        string name = tokens[1];
+        int index = stoi(tokens[2]);
+        
+        if (arrays.find(name) == arrays.end()) {
+            return "Массив не найден";
+        }
+        MDEL(arrays[name], index);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "MSWAP" && tokens.size() == 4) {
+        string name = tokens[1];
+        string value = tokens[2];
+        int index = stoi(tokens[3]);
+        
+        if (arrays.find(name) == arrays.end()) {
+            return "Массив не найден";
+        }
+        MSWAP(arrays[name], value, index);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "MGET" && tokens.size() == 3) {
+        string name = tokens[1];
+        int index = stoi(tokens[2]);
+        
+        if (arrays.find(name) == arrays.end()) {
+            return "Массив не найден";
+        }
+        string value = MGET(arrays[name], index);
+        return value;
+    }
+    else if (command == "MPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (arrays.find(name) == arrays.end()) {
+            return "Массив не найден";
+        }
+        MPRINT(arrays[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    // ==================== ОДНОСВЯЗНЫЕ СПИСКИ ====================
+    else if (command == "FCREATE" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        FCREATE(flists[name], value);
+        return value;
+    }
+    else if (command == "FGETINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int index = stoi(tokens[2]);
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* node = FGETINDEX(flists[name], index);
+        return node->data;
+    }
+    else if (command == "FGETDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* node = FGETDATA(flists[name], value);
+        return node->data;
+    }
+    else if (command == "FADDTAIL" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FADDTAIL(flists[name], value);
+        return value;
+    }
+    else if (command == "FADDHEAD" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FADDHEAD(flists[name], value);
+        return value;
+    }
+    // Добавление ПОСЛЕ по ИНДЕКСУ
+    else if (command == "FADDAFTERINDEX" && tokens.size() == 4) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        string value = tokens[3];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
+        FADDAFTER(targetNode, value);
+        return value;
+    }
+    // Добавление ПОСЛЕ по ЗНАЧЕНИЮ
+    else if (command == "FADDAFTERDATA" && tokens.size() == 4) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        string value = tokens[3];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETDATA(flists[name], targetValue);
+        FADDAFTER(targetNode, value);
+        return value;
+    }
+    // Добавление ДО по ИНДЕКСУ
+    else if (command == "FADDBEFOREINDEX" && tokens.size() == 4) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        string value = tokens[3];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
+        FADDBEFORE(flists[name], targetNode, value);
+        return value;
+    }
+    // Добавление ДО по ЗНАЧЕНИЮ
+    else if (command == "FADDBEFOREDATA" && tokens.size() == 4) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        string value = tokens[3];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETDATA(flists[name], targetValue);
+        FADDBEFORE(flists[name], targetNode, value);
+        return value;
+    }
+    else if (command == "FDELTAIL" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FDELTAIL(flists[name]);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "FDELHEAD" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FDELHEAD(flists[name]);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ПОСЛЕ по ИНДЕКСУ
+    else if (command == "FDELAFTERINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
+        FDELAFTER(targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ПОСЛЕ по ЗНАЧЕНИЮ
+    else if (command == "FDELAFTERDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETDATA(flists[name], targetValue);
+        FDELAFTER(targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ДО по ИНДЕКСУ
+    else if (command == "FDELBEFOREINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETINDEX(flists[name], targetIndex);
+        FDELBEFORE(flists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ДО по ЗНАЧЕНИЮ
+    else if (command == "FDELBEFOREDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FLNode* targetNode = FGETDATA(flists[name], targetValue);
+        FDELBEFORE(flists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "FDELDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FDELDATA(flists[name], value);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "FPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (flists.find(name) == flists.end()) {
+            return "Список не найден";
+        }
+        FPRINT(flists[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    // ==================== ДВУСВЯЗНЫЕ СПИСКИ ====================
+    else if (command == "LCREATE" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        LCREATE(llists[name], value);
+        return value;
+    }
+    else if (command == "LGETINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int index = stoi(tokens[2]);
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* node = LGETINDEX(llists[name], index);
+        return node->data;
+    }
+    else if (command == "LGETDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* node = LGETDATA(llists[name], value);
+        return node->data;
+    }
+    else if (command == "LADDTAIL" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LADDTAIL(llists[name], value);
+        return value;
+    }
+    else if (command == "LADDHEAD" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LADDHEAD(llists[name], value);
+        return value;
+    }
+    // Добавление ПОСЛЕ по ИНДЕКСУ
+    else if (command == "LADDAFTERINDEX" && tokens.size() == 4) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        string value = tokens[3];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
+        LADDAFTER(llists[name], targetNode, value);
+        return value;
+    }
+    // Добавление ПОСЛЕ по ЗНАЧЕНИЮ
+    else if (command == "LADDAFTERDATA" && tokens.size() == 4) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        string value = tokens[3];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETDATA(llists[name], targetValue);
+        LADDAFTER(llists[name], targetNode, value);
+        return value;
+    }
+    // Добавление ДО по ИНДЕКСУ
+    else if (command == "LADDBEFOREINDEX" && tokens.size() == 4) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        string value = tokens[3];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
+        LADDBEFORE(llists[name], targetNode, value);
+        return value;
+    }
+    // Добавление ДО по ЗНАЧЕНИЮ
+    else if (command == "LADDBEFOREDATA" && tokens.size() == 4) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        string value = tokens[3];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETDATA(llists[name], targetValue);
+        LADDBEFORE(llists[name], targetNode, value);
+        return value;
+    }
+    else if (command == "LDELTAIL" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LDELTAIL(llists[name]);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "LDELHEAD" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LDELHEAD(llists[name]);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ПОСЛЕ по ИНДЕКСУ
+    else if (command == "LDELAFTERINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
+        LDELAFTER(llists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ПОСЛЕ по ЗНАЧЕНИЮ
+    else if (command == "LDELAFTERDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETDATA(llists[name], targetValue);
+        LDELAFTER(llists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ДО по ИНДЕКСУ
+    else if (command == "LDELBEFOREINDEX" && tokens.size() == 3) {
+        string name = tokens[1];
+        int targetIndex = stoi(tokens[2]);
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETINDEX(llists[name], targetIndex);
+        LDELBEFORE(llists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    // Удаление ДО по ЗНАЧЕНИЮ
+    else if (command == "LDELBEFOREDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string targetValue = tokens[2];
+        
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LLNode* targetNode = LGETDATA(llists[name], targetValue);
+        LDELBEFORE(llists[name], targetNode);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "LDELDATA" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LDELDATA(llists[name], value);
+        return "Запрос успешно выполнен";
+    }
+    else if (command == "LPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (llists.find(name) == llists.end()) {
+            return "Список не найден";
+        }
+        LPRINT(llists[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    // ==================== ОЧЕРЕДИ ====================
+    else if (command == "QCREATE" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        QCREATE(queues[name], value);
+        return value;
+    }
+    else if (command == "QPUSH" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (queues.find(name) == queues.end()) {
+            return "Очередь не найдена";
+        }
+        QPUSH(queues[name], value);
+        return value;
+    }
+    else if (command == "QPOP" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (queues.find(name) == queues.end() || queues[name].head == nullptr) {
+            return "Очередь не существует или пуста";
+        }
+        string value = queues[name].head->data;
+        QPOP(queues[name]);
+        return value;
+    }
+    else if (command == "QPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (queues.find(name) == queues.end()) {
+            return "Очередь не найдена";
+        }
+        QPRINT(queues[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    // ==================== СТЕКИ ====================
+    // Создание стека
+    else if (command == "SCREATE" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (stacks.find(name) != stacks.end()) {
+            return "Стэк с таким именем уже существует";
+        }
+        SCREATE(stacks[name], value);
+        return value;
+    }
+    // Добавление в стек
+    else if (command == "SPUSH" && tokens.size() == 3) {
+        string name = tokens[1];
+        string value = tokens[2];
+        
+        if (stacks.find(name) == stacks.end()) {
+            return "Стэк не найден";
+        }
+        SPUSH(stacks[name], value);
+        return value;
+    }
+    else if (command == "SPOP" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (stacks.find(name) == stacks.end() || stacks[name].head == nullptr) {
+            return "Стэк пуст или не существует";
+        }
+        string value = stacks[name].head->data;
+        SPOP(stacks[name]);
+        return value;
+    }
+    else if (command == "SPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (stacks.find(name) == stacks.end()) {
+            return "Стэк не найден";
+        }
+        SPRINT(stacks[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    // ==================== ДЕРЕВЬЯ ====================
+    else if (command == "TADD" && tokens.size() == 3) {
+        string name = tokens[1];
+        int value = stoi(tokens[2]);
+        
+        if (trees.find(name) == trees.end()) {
+            trees[name] = new RBTree{nullptr};
+        }
+        addRBNode(trees[name], value);
+        return to_string(value);
+    }
+    else if (command == "TDEL" && tokens.size() == 3) {
+        string name = tokens[1];
+        int value = stoi(tokens[2]);
+        
+        if (trees.find(name) == trees.end()) {
+            return "Дерево не найдено";
+        }
+        delRBNode(trees[name], value);
+        return to_string(value);
+    }
+    else if (command == "TPRINT" && tokens.size() == 2) {
+        string name = tokens[1];
+        if (trees.find(name) == trees.end()) {
+            return "Дерево не найдено";
+        }
+        print(trees[name]);
+        return "Запрос успешно выполнен";
+    }
+    
+    else {
+        return "Ошибка, неизвестная комманда или неправильные аргументы";
+    }
+}
 };
 
 // ==================== ОБРАБОТКА АРГУМЕНТОВ КОМАНДНОЙ СТРОКИ ====================

@@ -29,7 +29,3 @@ void transplant(RBTree* tree, RBNode* u, RBNode* v);
 void delRBNode(RBTree* tree, int value);
 void printTree(RBNode* RBNode, int space = 0, int gap = 5);
 void print(RBTree* tree);
-bool checkRBProperties(RBNode* RBNode, int& blackCount, int currentBlack);
-void validateTree(RBTree* tree);
-bool checkRBPropertiesDetailed(RBNode* node, int& blackCount, int currentBlack, RBNode* parent = nullptr);
-void validateTreeDetailed(RBTree* tree);

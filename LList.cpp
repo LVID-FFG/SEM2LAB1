@@ -1,22 +1,10 @@
 #include <iostream>
-
+#include <string>
+#include "LList.h"
 using namespace std;
 
-class LLNode{
-    public:
-        int data;
-        LLNode* previous;
-        LLNode* next;
-};
-
-class LList{
-    public:
-        LLNode* tail;
-        LLNode* head;
-};
-
-void LCREATE(LList& new_LList, int data){
-    new_LList.head = new LLNode{data, nullptr, nullptr};
+void LCREATE(LList& new_LList, const string& data){
+    new_LList.head = new LLNode(data, nullptr, nullptr);
     new_LList.tail = new_LList.head;
 }
 
@@ -40,7 +28,7 @@ LLNode* LGETINDEX(LList& list, int index){
     }
 }
 
-LLNode* LGETDATA(LList& list, int data){
+LLNode* LGETDATA(LList& list, const string& data){
     LLNode* Address = list.head;
     while(1){
         if (Address -> data == data){
@@ -60,15 +48,15 @@ LLNode* LGETDATA(LList& list, int data){
 }
 
 
-void LADDTAIL(LList& list, int data){
-    LLNode* new_LLNode = new LLNode{data, list.tail, nullptr};
+void LADDTAIL(LList& list, const string& data){
+    LLNode* new_LLNode = new LLNode(data, list.tail, nullptr);
     list.tail -> next = new_LLNode;
     list.tail = new_LLNode;
 }
 
 
-void LADDHEAD(LList& list, int data){
-    LLNode* new_LLNode = new LLNode{data, nullptr, list.head};
+void LADDHEAD(LList& list, const string& data){
+    LLNode* new_LLNode = new LLNode(data, nullptr, list.head);
     
     // Обновляем previous у старой головы
     if (list.head != nullptr) {
@@ -83,23 +71,23 @@ void LADDHEAD(LList& list, int data){
     }
 }
 
-void LADDAFTER(LList& list, LLNode* ptr, int data){
+void LADDAFTER(LList& list, LLNode* ptr, const string& data){
     if (ptr -> next == nullptr){
         LADDTAIL(list, data);
         return;
     }
-    LLNode* new_LLNode = new LLNode{data, ptr, ptr -> next};
+    LLNode* new_LLNode = new LLNode(data, ptr, ptr -> next);
     ptr -> next = new_LLNode;
     new_LLNode -> next -> previous = new_LLNode;
 }
 
-void LADDBEFORE(LList& list, LLNode* ptr, int data){
+void LADDBEFORE(LList& list, LLNode* ptr, const string& data){
     if (list.head == ptr){
         LADDHEAD(list, data);
         return;
     }
 
-    LLNode* new_LLNode = new LLNode{data, ptr->previous, ptr};
+    LLNode* new_LLNode = new LLNode(data, ptr->previous, ptr);
     
     // Обновляем указатель next у предыдущего узла
     ptr->previous->next = new_LLNode;
@@ -151,7 +139,7 @@ void LDELBEFORE(LList& list, LLNode* ptr){
     Address -> next = ptr;
 }
 
-void LDELDATA(LList& list, int data){
+void LDELDATA(LList& list, const string& data){
     LLNode* Address = list.head;
     if (Address -> data == data){
         LDELHEAD(list);

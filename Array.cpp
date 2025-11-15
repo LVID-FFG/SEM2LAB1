@@ -1,105 +1,151 @@
 #include <iostream>
+#include <string>
+#include "Array.h"
 
 using namespace std;
 
-class Array{
-    public:
-        int* data;
-        int* end;
-};
-
-Array MCREATE(){
-    Array array;
-    array.data = new int;
-    array.end = array.data;
-    return array;
-}
-
 void MSIZE(Array& array){
-    cout << "Size = "<< array.end - array.data << endl;
+    cout << "Size = " << array.size << endl;
 }
 
-void MPUSHEND(Array& array, int a){
-    size_t current_size = array.end - array.data;
-    int* new_data = new int[current_size + 1];
+void MPUSHEND(Array& array, const string& a){
+    if (array.data == nullptr) {
+        // Если массив пустой, создаем с одним элементом
+        array.data = new string[1];
+        array.data[0] = a;
+        array.size = 1;  // Устанавливаем размер
+        return;
+    }
+    
+    size_t current_size = array.size;
+    string* new_data = new string[current_size + 1];
+    
     // Копируем старые данные
     for (size_t i = 0; i < current_size; i++) {
         new_data[i] = array.data[i];
     }
+    
     // Добавляем новый элемент
     new_data[current_size] = a;
     
     // Освобождаем старую память и обновляем указатели
     delete[] array.data;
     array.data = new_data;
-    array.end = array.data + current_size + 1;
+    array.size = current_size + 1;  // Обновляем размер
 }
 
-
-void MPUSH(Array& array, int a, int index){
-    size_t current_size = array.end - array.data;
+void MPUSH(Array& array, const string& a, int index){
+    if (array.data == nullptr) {
+        // Если массив пустой, создаем и добавляем элемент
+        array.data = new string[1];
+        array.data[0] = a;
+        array.size = 1;  // Устанавливаем размер
+        return;
+    }
+    
+    size_t current_size = array.size;
     
     if (index >= current_size) {
-        // Если индекс за пределами текущего размера - добавляем нули
-        for (size_t i = 0; i < index - current_size; i++) {
-            MPUSHEND(array, 0);
-        }
+        // Если индекс за пределами - добавляем в конец
         MPUSHEND(array, a);
     } else {
         // Вставка в середину массива
-        MPUSHEND(array, 0); // Добавляем место в конце
+        string* new_data = new string[current_size + 1];
         
-        // Сдвигаем элементы вправо
-        for (size_t i = current_size; i > index; i--) {
-            array.data[i] = array.data[i - 1];
+        // Копируем элементы до индекса
+        for (size_t i = 0; i < index; i++) {
+            new_data[i] = array.data[i];
         }
+        
         // Вставляем новый элемент
-        array.data[index] = a;
-    }
-}
-
-void MDEL (Array& array, int index){
-    size_t current_size = array.end - array.data;
-    if (index >= current_size){
-        cout << "Индекс вне массива" << endl;
-        return;
-    }else{
-        index++;
-        for(;index < current_size; index++) {
-            array.data[index-1] = array.data[index];
+        new_data[index] = a;
+        
+        // Копируем оставшиеся элементы
+        for (size_t i = index; i < current_size; i++) {
+            new_data[i + 1] = array.data[i];
         }
-        array.end--;
-    }
-    if (array.data == array.end){
-        delete array.data;
+        
+        delete[] array.data;
+        array.data = new_data;
+        array.size = current_size + 1;
     }
 }
 
-void MSWAP (Array& array, int swap_element ,int index){
-    size_t current_size = array.end - array.data;
+void MDEL(Array& array, int index){
+    if (array.data == nullptr) {
+        cout << "Массив пуст" << endl;
+        return;
+    }
+    
+    size_t current_size = array.size;
     if (index >= current_size){
         cout << "Индекс вне массива" << endl;
         return;
-    }else{
-        array.data[index] = swap_element;
     }
+    
+    if (current_size == 1) {
+        // Если удаляем последний элемент
+        delete[] array.data;
+        array.data = nullptr;
+        array.size = 0;  // Обнуляем размер
+        return;
+    }
+    
+    // Создаем новый массив на один элемент меньше
+    string* new_data = new string[current_size - 1];
+    
+    // Копируем элементы до индекса
+    for (size_t i = 0; i < index; i++) {
+        new_data[i] = array.data[i];
+    }
+    
+    // Копируем элементы после индекса
+    for (size_t i = index + 1; i < current_size; i++) {
+        new_data[i - 1] = array.data[i];
+    }
+    
+    delete[] array.data;
+    array.data = new_data;
+    array.size = current_size - 1;
 }
 
-int MGET(Array& array, int index){
-    size_t current_size = array.end - array.data;
+void MSWAP(Array& array, const string& swap_element, int index){
+    if (array.data == nullptr) {
+        cout << "Массив пуст" << endl;
+        return;
+    }
+    
+    size_t current_size = array.size;
     if (index >= current_size){
         cout << "Индекс вне массива" << endl;
-        return 0;
-    }else{
-        return array.data[index];
+        return;
     }
+    
+    array.data[index] = swap_element;
+}
+
+string MGET(Array& array, int index){
+    if (array.data == nullptr) {
+        cout << "Массив пуст" << endl;
+        return "";
+    }
+    
+    size_t current_size = array.size;
+    if (index >= current_size){
+        cout << "Индекс вне массива" << endl;
+        return "";
+    }
+    
+    return array.data[index];
 }
 
 void MPRINT(Array& array){
-    size_t i = 0;
-    while (&array.data[i] != array.end){
-        cout  << array.data[i] << " index = "<< i << endl;
-        i++;
+    if (array.data == nullptr) {
+        cout << "Массив пуст" << endl;
+        return;
+    }
+    
+    for (size_t i = 0; i < array.size; i++) {
+        cout << array.data[i] << " index = " << i << endl;
     }
 }
-
